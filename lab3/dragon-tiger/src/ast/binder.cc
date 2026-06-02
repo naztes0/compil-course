@@ -189,6 +189,12 @@ namespace ast
       {
         error(id.loc, id.name.get() + " is not a variable");
       }
+      int current_depth = functions.size();
+      id.set_depth(current_depth);
+      if (current_depth > var_decl->get_depth())
+      {
+        var_decl->set_escapes();
+      }
       id.set_decl(var_decl);
     }
 
@@ -205,6 +211,8 @@ namespace ast
 
     void Binder::visit(VarDecl &decl)
     {
+      int current_depth = functions.size();
+      decl.set_depth(current_depth);
       if (decl.get_expr())
       {
         decl.get_expr()->accept(*this);
@@ -229,6 +237,8 @@ namespace ast
     }
     void Binder::visit(FunCall &call)
     {
+      int current_depth = functions.size();
+      call.set_depth(current_depth);
       for (auto arg : call.get_args())
       {
         arg->accept(*this);
