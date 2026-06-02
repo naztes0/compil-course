@@ -165,6 +165,8 @@ namespace ast
           enter(*fun_decl);
         }
       }
+      auto saved_loops = std::move(current_loops);
+      current_loops.clear();
       for (auto d : let.get_decls())
       {
         FunDecl *fun_decl = dynamic_cast<FunDecl *>(d);
@@ -177,6 +179,7 @@ namespace ast
           d->accept(*this);
         }
       }
+      current_loops = std::move(saved_loops);
       let.get_sequence().accept(*this);
       pop_scope();
     }
@@ -254,14 +257,31 @@ namespace ast
 
     void Binder::visit(WhileLoop &loop)
     {
+      loop.get_condition().accept(*this);
+      current_loops.push_back(&loop);
+      loop.get_body().accept(*this);
+      current_loops.pop_back();
     }
 
     void Binder::visit(ForLoop &loop)
     {
+      push_scope();
+      loop.get_variable().accept(*this);
+      loop.get_high().accept(*this);
+      current_loops.push_back(&loop);
+      loop.get_body().accept(*this);
+      current_loops.pop_back();
+
+      pop_scope();
     }
 
     void Binder::visit(Break &b)
     {
+      if (current_loops.empty())
+      {
+        error(b.loc, "break must be inside a loop");
+      }
+      b.set_loop(current_loops.back());
     }
 
     void Binder::visit(Assign &assign)
