@@ -159,7 +159,23 @@ namespace ast
       push_scope();
       for (auto d : let.get_decls())
       {
-        d->accept(*this);
+        FunDecl *fun_decl = dynamic_cast<FunDecl *>(d);
+        if (fun_decl)
+        {
+          enter(*fun_decl);
+        }
+      }
+      for (auto d : let.get_decls())
+      {
+        FunDecl *fun_decl = dynamic_cast<FunDecl *>(d);
+        if (fun_decl)
+        {
+          fun_decl->accept(*this);
+        }
+        else
+        {
+          d->accept(*this);
+        }
       }
       let.get_sequence().accept(*this);
       pop_scope();
@@ -198,7 +214,6 @@ namespace ast
 
     void Binder::visit(FunDecl &decl)
     {
-      set_parent_and_external_name(decl);
       functions.push_back(&decl);
       push_scope();
       for (auto param : decl.get_params())
@@ -210,12 +225,21 @@ namespace ast
         (*decl.get_expr()).accept(*this);
       }
       pop_scope();
-
       functions.pop_back();
     }
-
     void Binder::visit(FunCall &call)
     {
+      for (auto arg : call.get_args())
+      {
+        arg->accept(*this);
+      }
+      Decl &decl = find(call.loc, call.func_name);
+      FunDecl *fun_decl = dynamic_cast<FunDecl *>(&decl);
+      if (!fun_decl)
+      {
+        error(call.loc, call.func_name.get() + " is not a function");
+      }
+      call.set_decl(fun_decl);
     }
 
     void Binder::visit(WhileLoop &loop)
